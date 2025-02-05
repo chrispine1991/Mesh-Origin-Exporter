@@ -1,10 +1,10 @@
 bl_info = {
     "name": "Mesh Origin Exporter",
     "author": "YourName",
-    "version": (1, 1),
+    "version": (1, 2),
     "blender": (2, 93, 0),
     "location": "View3D > Sidebar > Mesh Origin Exporter",
-    "description": "Exports each selected mesh to FBX at world origin with adjustable folder & scale",
+    "description": "Exports each selected mesh to FBX at world origin, with UI for folder & scale",
     "warning": "",
     "category": "Import-Export",
 }
@@ -17,7 +17,7 @@ class MESHORIGINEXPORTER_OT_Export(bpy.types.Operator):
     bl_idname = "meshoriginexporter.export"
     bl_label = "Export Meshes"
 
-    # Exposed properties
+    # Properties (exposed in the panel)
     export_folder: bpy.props.StringProperty(
         name="Export Folder",
         description="Folder where FBX files will be saved",
@@ -76,20 +76,40 @@ class MESHORIGINEXPORTER_OT_Export(bpy.types.Operator):
             obj.rotation_euler = orig_rot
             obj.scale = orig_scale
 
-        # Reselect them all (optional)
+        # Reselect them all
         bpy.ops.object.select_all(action='DESELECT')
         for o in selected_meshes:
             o.select_set(True)
 
-        self.report({'INFO'}, f"Exported {len(selected_meshes)} mesh(es) to: {self.export_folder}")
+        self.report({'INFO'}, f"Exported {len(selected_meshes)} mesh(es) to {self.export_folder}")
         return {'FINISHED'}
 
-# Registration
+class MESHORIGINEXPORTER_PT_Panel(bpy.types.Panel):
+    """Creates a Panel in the 3D View Sidebar"""
+    bl_label = "Mesh Origin Exporter"
+    bl_idname = "MESHORIGINEXPORTER_PT_panel"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = "Mesh Origin Exporter"
+
+    def draw(self, context):
+        layout = self.layout
+
+        # Draw a heading
+        layout.label(text="Batch Export to FBX at Origin:")
+
+        # Create an Operator property layout
+        op = layout.operator("meshoriginexporter.export", text="Export")
+        op.export_folder = r"C:\MyExports"  # Could read from a global, context, etc.
+        op.global_scale = 0.1
+
 def register():
     bpy.utils.register_class(MESHORIGINEXPORTER_OT_Export)
+    bpy.utils.register_class(MESHORIGINEXPORTER_PT_Panel)
     print("Mesh Origin Exporter: registered")
 
 def unregister():
+    bpy.utils.unregister_class(MESHORIGINEXPORTER_PT_Panel)
     bpy.utils.unregister_class(MESHORIGINEXPORTER_OT_Export)
     print("Mesh Origin Exporter: unregistered")
 
