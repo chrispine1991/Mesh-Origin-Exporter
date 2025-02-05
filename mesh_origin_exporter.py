@@ -1,10 +1,10 @@
 bl_info = {
     "name": "Mesh Origin Exporter",
     "author": "YourName",
-    "version": (1, 0),
+    "version": (1, 1),
     "blender": (2, 93, 0),
     "location": "View3D > Sidebar > Mesh Origin Exporter",
-    "description": "Exports each selected mesh to FBX at world origin, restoring transforms afterwards",
+    "description": "Exports each selected mesh to FBX at world origin with adjustable folder & scale",
     "warning": "",
     "category": "Import-Export",
 }
@@ -12,22 +12,33 @@ bl_info = {
 import bpy
 import os
 
-# Hard-coded example defaults
-DEFAULT_EXPORT_FOLDER = r"C:\MyExports"
-DEFAULT_GLOBAL_SCALE = 0.1
-
 class MESHORIGINEXPORTER_OT_Export(bpy.types.Operator):
-    """Exports each selected mesh to FBX at the world origin (scale=0.1)"""
+    """Exports each selected mesh to FBX at the world origin."""
     bl_idname = "meshoriginexporter.export"
     bl_label = "Export Meshes"
 
-    def execute(self, context):
-        export_folder = DEFAULT_EXPORT_FOLDER
-        global_scale = DEFAULT_GLOBAL_SCALE
+    # Exposed properties
+    export_folder: bpy.props.StringProperty(
+        name="Export Folder",
+        description="Folder where FBX files will be saved",
+        default=r"C:\MyExports",
+        subtype='DIR_PATH'
+    )
+    global_scale: bpy.props.FloatProperty(
+        name="Global Scale",
+        description="Scale factor for export",
+        default=0.1,
+        min=0.0001,
+        max=100.0
+    )
 
-        # Ensure the export folder exists (simple check)
-        if not os.path.isdir(export_folder):
-            os.makedirs(export_folder, exist_ok=True)
+    def execute(self, context):
+        if not os.path.isdir(self.export_folder):
+            try:
+                os.makedirs(self.export_folder, exist_ok=True)
+            except Exception as e:
+                self.report({'ERROR'}, f"Could not create folder: {str(e)}")
+                return {'CANCELLED'}
 
         selected_meshes = [obj for obj in context.selected_objects if obj.type == 'MESH']
         if not selected_meshes:
@@ -49,13 +60,13 @@ class MESHORIGINEXPORTER_OT_Export(bpy.types.Operator):
             context.view_layer.objects.active = obj
 
             # Build filepath
-            fbx_path = os.path.join(export_folder, f"{obj.name}.fbx")
+            fbx_path = os.path.join(self.export_folder, f"{obj.name}.fbx")
 
             # Export FBX
             bpy.ops.export_scene.fbx(
                 filepath=fbx_path,
                 use_selection=True,
-                global_scale=global_scale,
+                global_scale=self.global_scale,
                 apply_unit_scale=True,
                 use_space_transform=True
             )
@@ -70,9 +81,10 @@ class MESHORIGINEXPORTER_OT_Export(bpy.types.Operator):
         for o in selected_meshes:
             o.select_set(True)
 
-        self.report({'INFO'}, f"Exported {len(selected_meshes)} meshes to {export_folder}")
+        self.report({'INFO'}, f"Exported {len(selected_meshes)} mesh(es) to: {self.export_folder}")
         return {'FINISHED'}
 
+# Registration
 def register():
     bpy.utils.register_class(MESHORIGINEXPORTER_OT_Export)
     print("Mesh Origin Exporter: registered")
